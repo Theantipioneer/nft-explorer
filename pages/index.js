@@ -1,66 +1,38 @@
-import axios from "axios";
-import { useMoralis } from "react-moralis";
 import { useMoralisWeb3Api } from "react-moralis";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faSearch } from "@fortawesome/free-solid-svg-icons";
 import arrayShuffle from "array-shuffle";
 import { server } from "../config";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Image from "next/image";
-import defaultImg from "../public/wtf.jpg";
+import Nav from "../components/Nav";
 
 import styles from "../styles/Home.module.css";
 
 export default function Home({ holders }) {
+    const [inputAddress, setInputAddress] = useState([""]);
     const [images, setImages] = useState([]);
+
     const Web3Api = useMoralisWeb3Api();
-
-    const { authenticate, isAuthenticated, isAuthenticating, logout } =
-        useMoralis();
-
-    useEffect(() => {
-        if (isAuthenticated) {
-        }
-
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isAuthenticated, images]);
-
-    // useEffect(() => {
-    //     console.log(images);
-    // }, [images]);
-
-    const login = async () => {
-        if (!isAuthenticated) {
-            await authenticate({ signingMessage: "Log in using Moralis" })
-                .then(function (user) {
-                    console.log("logged in user:", user);
-                    console.log(user.get("ethAddress"));
-                })
-                .catch(function (error) {
-                    console.log(error);
-                });
-        }
-    };
-
-    const logOut = async () => {
-        await logout();
-        console.log("logged out");
-    };
 
     let addresses = [];
     function fetchHolderAddress() {
-        if (addresses.length >= 3) {
-            return;
-        }
-        const shuffledHolders = arrayShuffle(holders).slice(0, 10);
+        // Prevent adding more addresses to the array.
+        if (addresses.length == 10) return;
 
-        for (let i = 0; i < shuffledHolders.length; i++) {
-            addresses.push(shuffledHolders[i].HolderAddress);
-        }
+        // const shuffledHolders = arrayShuffle(holders).slice(0, 10);
+
+        // for (let i = 0; i < shuffledHolders.length; i++) {
+        //     addresses.push(shuffledHolders[i].HolderAddress);
+        // }
+        addresses.push(inputAddress);
 
         return;
     }
 
-    const fetchNFTs = async () => {
+    const fetchNFTs = async (e) => {
         let results = [];
+        e.preventDefault();
         fetchHolderAddress();
 
         // Fetch nft balance for each address
@@ -69,17 +41,22 @@ export default function Home({ holders }) {
                 chain: "eth",
                 address: addresses[i],
             };
-            const data = await Web3Api.account.getNFTs(options);
-            const result = data.result;
-            if (result.length) {
-                results.push(result);
+            const data = await Web3Api.account.getNFTs(options).catch((err) => {
+                alert("Enter a correct address");
+                console.log("err:", err);
+            });
+            if (data) {
+                const result = data.result;
+                if (result.length) {
+                    results.push(result);
+                }
             }
         }
 
         // Get the token uri's for each balance
         if (results.length) {
             results.forEach((result) => {
-                if (result.length > 3) result.length = 3;
+                if (result.length > 3) result.length = 6;
                 result.forEach(async (nft) => {
                     // fetch metadata
                     const res = await fetch(nft.token_uri).catch((err) =>
@@ -109,47 +86,60 @@ export default function Home({ holders }) {
     };
 
     return (
-        <div className={styles.container}>
-            <main className={styles.main}>
-                <button onClick={login}>Login</button>
-                <button
-                    onClick={fetchNFTs}
-                    style={{
-                        color: "white",
-                        background: "#b04362",
-                        cursor: "pointer",
-                    }}
-                >
-                    Load NFTs
-                </button>
-                <button onClick={logOut} disabled={isAuthenticating}>
-                    Logout
-                </button>
-                <div>
-                    {images.map((img, index) => (
-                        <Image
-                            src={img}
-                            key={index}
-                            alt="nft"
-                            width={250}
-                            height={250}
-                        />
-                    ))}
-                </div>
-                <h1>Cachet</h1>
-                <h3>hello??</h3>
-            </main>
-        </div>
+        <>
+            <Nav />
+            <div className={styles.container}>
+                <main className={styles.main}>
+                    <div className={styles.wrap}>
+                        <div className={styles.search}>
+                            <input
+                                className={styles.search_term}
+                                type="text"
+                                placeholder="Paste address"
+                                value={inputAddress}
+                                onChange={(e) =>
+                                    setInputAddress(e.target.value)
+                                }
+                                onSubmit={(e) => e.preventDefault()}
+                                onKeyDown={(e) => {
+                                    e.key === 13 && fetchNFTs();
+                                }}
+                            />
+                            <button
+                                className={styles.search_btn}
+                                onClick={fetchNFTs}
+                                type="submit"
+                            >
+                                <FontAwesomeIcon icon={faSearch} />
+                            </button>
+                        </div>
+                    </div>
+                    <div className={styles.grid}>
+                        {images.map((img, index) => (
+                            <div key={index}>
+                                <Image
+                                    src={img}
+                                    alt="nft"
+                                    width={250}
+                                    height={250}
+                                />
+                            </div>
+                        ))}
+                    </div>
+                </main>
+            </div>
+        </>
     );
 }
 
-export const getStaticProps = async () => {
-    const res = await fetch(`${server}/api/token-holders`);
-    const holders = await res.json();
+// Bulk searches
+// export const getStaticProps = async () => {
+//     const res = await fetch(`${server}/api/token-holders`);
+//     const holders = await res.json();
 
-    return {
-        props: {
-            holders,
-        },
-    };
-};
+//     return {
+//         props: {
+//             holders,
+//         },
+//     };
+// };
