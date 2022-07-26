@@ -91,6 +91,7 @@ export default function Home({ holders }) {
             <div className={styles.container}>
                 <main className={styles.main}>
                     <div className={styles.wrap}>
+                        <h1>See the NFTs owned by an address.</h1>
                         <div className={styles.search}>
                             <input
                                 className={styles.search_term}
